@@ -1,0 +1,25 @@
+name: Pedir acceso a VPN Hub
+description: Tu usuario de GitHub es el de esta cuenta; con eso alcanza para invitarte.
+title: "Acceso a VPN Hub"
+labels: ["acceso"]
+body:
+  - type: markdown
+    attributes:
+      value: "Completá y tocá **Submit new issue**. Rodrigo recibe el aviso y te llega la invitación por correo."
+  - type: input
+    id: nombre
+    attributes:
+      label: Tu nombre
+      placeholder: "Juan Pérez"
+    validations:
+      required: true
+  - type: dropdown
+    id: sistema
+    attributes:
+      label: Sistema donde lo vas a instalar
+      options: ["macOS", "Linux (Kubuntu/Ubuntu)", "Windows (WSL2)"]
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: "No escribas contraseñas ni claves de VPN acá."
