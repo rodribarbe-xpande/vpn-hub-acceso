@@ -38,7 +38,15 @@ jobs:
             GH_TOKEN="$COMENTARIO_TOKEN" gh issue comment "$NUM" -R "$REPO" -b "@$DUENO: falta el secreto \`VPN_HUB_ADMIN_TOKEN\` en este repositorio, así que no pude invitar. Agregalo a mano: https://github.com/$DUENO/vpn-hub/settings/access → *Add people* → \`$AUTOR\`."
             exit 1
           fi
-          gh api -X PUT "repos/$DUENO/vpn-hub/collaborators/$AUTOR" -f permission=push >/dev/null
+          if [ "$AUTOR" = "$DUENO" ]; then
+            GH_TOKEN="$COMENTARIO_TOKEN" gh issue comment "$NUM" -R "$REPO" -b "@$AUTOR: sos el dueño del repositorio, no hay nada que invitar (pedido de prueba). Cierro."
+            GH_TOKEN="$COMENTARIO_TOKEN" gh issue close "$NUM" -R "$REPO" -r completed
+            exit 0
+          fi
+          if ! salida=$(gh api -X PUT "repos/$DUENO/vpn-hub/collaborators/$AUTOR" -f permission=push 2>&1 >/dev/null); then
+            GH_TOKEN="$COMENTARIO_TOKEN" gh issue comment "$NUM" -R "$REPO" -b "@$DUENO: GitHub rechazó la invitación a \`$AUTOR\` (${salida:-sin detalle}). Agregalo a mano: https://github.com/$DUENO/vpn-hub/settings/access → *Add people* → \`$AUTOR\`."
+            exit 1
+          fi
           GH_TOKEN="$COMENTARIO_TOKEN" gh issue comment "$NUM" -R "$REPO" -b "Listo, @$AUTOR: te llegó por correo la invitación al repositorio privado \`$DUENO/vpn-hub\`. Aceptala y seguí la guía de instalación."
           GH_TOKEN="$COMENTARIO_TOKEN" gh issue close "$NUM" -R "$REPO" -r completed
       - name: Rechazar
