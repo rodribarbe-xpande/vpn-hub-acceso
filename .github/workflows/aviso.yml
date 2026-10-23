@@ -1,0 +1,25 @@
+name: Aviso de pedido de acceso
+# Al abrirse un pedido: comenta mencionando al dueño (GitHub le manda correo y notificación en su app al instante)
+# con las instrucciones para aprobar desde el celular.
+on:
+  issues:
+    types: [opened]
+permissions:
+  issues: write
+jobs:
+  avisar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comentar con instrucciones
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUM: ${{ github.event.issue.number }}
+          AUTOR: ${{ github.event.issue.user.login }}
+          DUENO: ${{ github.repository_owner }}
+        run: |
+          gh issue comment "$NUM" -R "$REPO" -b "@$DUENO: **@$AUTOR** pide acceso al repositorio privado de VPN Hub.
+
+          Para aprobar, respondé a este correo o comentá acá con **ok** (y **no** para rechazar). La invitación sale sola.
+
+          Si no funcionara en automático: https://github.com/$DUENO/vpn-hub/settings/access → *Add people* → \`$AUTOR\`."

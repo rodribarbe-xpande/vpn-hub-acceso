@@ -1,0 +1,53 @@
+name: Aprobar pedido de acceso
+# Cuando el dueño del repo comenta «ok» en un pedido abierto (también respondiendo al correo de GitHub), invita al
+# autor del pedido como colaborador del repositorio privado, le avisa y cierra el pedido. «no» lo cierra sin invitar.
+# Necesita el secreto VPN_HUB_ADMIN_TOKEN: un token de acceso personal (fine-grained) del dueño con permiso
+# «Administration: read and write» solo sobre el repositorio privado vpn-hub.
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  issues: write
+jobs:
+  aprobar:
+    if: github.event.issue.state == 'open' && github.event.comment.user.login == github.repository_owner
+    runs-on: ubuntu-latest
+    steps:
+      - name: Leer la decisión (primera línea del comentario)
+        id: decision
+        env:
+          CUERPO: ${{ github.event.comment.body }}
+        run: |
+          linea=$(printf '%s' "$CUERPO" | sed -e 's/\r$//' | grep -v '^[[:space:]]*$' | head -1 | tr '[:upper:]' '[:lower:]' | sed -e 's/^[[:space:]]*//')
+          case "$linea" in
+            ok*|dale*|aprobado*|si*|sí*) echo "decision=ok" >> "$GITHUB_OUTPUT" ;;
+            no*|rechaz*) echo "decision=no" >> "$GITHUB_OUTPUT" ;;
+            *) echo "decision=nada" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - name: Invitar al repositorio privado
+        if: steps.decision.outputs.decision == 'ok'
+        env:
+          GH_TOKEN: ${{ secrets.VPN_HUB_ADMIN_TOKEN }}
+          COMENTARIO_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUM: ${{ github.event.issue.number }}
+          AUTOR: ${{ github.event.issue.user.login }}
+          DUENO: ${{ github.repository_owner }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            GH_TOKEN="$COMENTARIO_TOKEN" gh issue comment "$NUM" -R "$REPO" -b "@$DUENO: falta el secreto \`VPN_HUB_ADMIN_TOKEN\` en este repositorio, así que no pude invitar. Agregalo a mano: https://github.com/$DUENO/vpn-hub/settings/access → *Add people* → \`$AUTOR\`."
+            exit 1
+          fi
+          gh api -X PUT "repos/$DUENO/vpn-hub/collaborators/$AUTOR" -f permission=push >/dev/null
+          GH_TOKEN="$COMENTARIO_TOKEN" gh issue comment "$NUM" -R "$REPO" -b "Listo, @$AUTOR: te llegó por correo la invitación al repositorio privado \`$DUENO/vpn-hub\`. Aceptala y seguí la guía de instalación."
+          GH_TOKEN="$COMENTARIO_TOKEN" gh issue close "$NUM" -R "$REPO" -r completed
+      - name: Rechazar
+        if: steps.decision.outputs.decision == 'no'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUM: ${{ github.event.issue.number }}
+          AUTOR: ${{ github.event.issue.user.login }}
+        run: |
+          gh issue comment "$NUM" -R "$REPO" -b "@$AUTOR: por ahora no se dio acceso por este medio. Escribile a Rodrigo."
+          gh issue close "$NUM" -R "$REPO" -r "not planned"
